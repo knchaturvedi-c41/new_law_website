@@ -1,0 +1,363 @@
+body {
+    background-color: #fff;
+    color: #333;
+    font-family: 'Georgia', serif;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #003366;
+    color: #fff;
+    padding: 20px 0;
+    text-align: center;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-links li {
+    margin: 0 20px;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: normal;
+    position: relative;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: #5a1f41; /* Dark purple as seen in the reference */
+}
+
+.nav-links a.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+    width: 100%;
+    height: 2px;
+    background-color: #5a1f41;
+}
+
+.nav-links a:hover {
+    color: #f1c40f;
+}
+
+.page-content {
+    padding-top: 120px;
+    max-width: 1000px;
+    margin: auto;
+}
+
+.content-container {
+    background: #f8f8f8;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+footer {
+    background-color: #003366;
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
+
+/* Popup Overlay */
+
+.popup {
+    display: none ; /* Ensure it's hidden when the page loads */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7); /* Dark overlay */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+
+/* Popup Content */
+.popup-content {
+    width: 80%;
+    max-width: 800px;
+    height: 80%;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    position: relative;
+    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Popup Header (for Close & Fullscreen buttons) */
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Close Button */
+.close-popup {
+    font-size: 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: black;
+}
+
+/* Fullscreen Button */
+.fullscreen-popup {
+    font-size: 18px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: black;
+    margin-right: auto;
+}
+
+/* iFrame Styling */
+#popup-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Fullscreen Mode */
+.fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    border-radius: 0 !important;
+    z-index: 2000;
+}
+
+
+/* Profile Section */
+.profile-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto; /* Center content */
+    padding: 20px 20px 40px; /* Reduce top padding */
+}
+
+.profile-text {
+    width: 65%;
+    margin-top: 0;
+}
+
+.profile-image-container {
+    width: 30%;
+    text-align: right; /* Aligns image to the right */
+}
+
+.profile-image {
+    width: 220px; /* Adjust size */
+    height: auto;
+    border-radius: 5px;
+    border: 2px solid #1a1a1a; /* Adds a thin border */
+    padding: 5px;
+}
+/* Gallery Styling */
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    padding: 20px;
+    max-width: 1000px;
+    margin: auto;
+}
+
+/* Style images and videos inside the gallery */
+.gallery img, 
+.gallery video {
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Hover effect */
+.gallery img:hover, 
+.gallery video:hover {
+    transform: scale(1.05);
+}
+
+
+
+/* Slideshow Container */
+.slideshow-container {
+    width: 80%;
+    height: 350px; /* Adjust height as needed */
+    position: relative;
+    margin: 20px auto; /* Centers the slideshow */
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f8f8;
+    border-radius: 10px;
+}
+
+/* Default Slide Styling */
+.slide {
+    display: none; /* Hide all slides initially */
+    width: 100%;
+    height: 100%;
+    text-align: center;
+}
+
+/* Image Styling */
+.slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+/* Custom Alignment for Individual Images */
+.slide:nth-child(2) img {
+    object-position: center top; /* ✅ Perfect for first image */
+}
+
+.slide:nth-child(3) img {
+    object-position: left 20%; /* 🔹 Moves focus left to show main subjects */
+}
+
+.slide:nth-child(4) img {
+    object-position: center 30%; /* 🔹 Slight upward shift to focus on faces in the conference room */
+}
+
+.slide:nth-child(5) img {
+    object-position: right 25%; /* 🔹 Shifts right to keep main people visible */
+}
+
+.slide:nth-child(6) img {
+    object-position: center center; /* 🔹 Moves focus slightly upward to include all panelists */
+}
+
+
+
+/* Navigation Buttons */
+.prev, .next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 24px;
+    border-radius: 50%;
+    z-index: 10;
+}
+
+.prev {
+    left: 10px;
+}
+
+.next {
+    right: 10px;
+}
+
+.prev:hover, .next:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Contact Form Styling */
+.contact-container {
+    max-width: 600px;
+    margin: auto;
+    background: #f8f8f8;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.contact-container h1 {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.contact-container p {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+/* Contact Form */
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Input Fields */
+.contact-form label {
+    font-weight: bold;
+    text-align: left;
+}
+
+.contact-form input,
+.contact-form textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Submit Button */
+.contact-button {
+    background-color: #003366;
+    color: white;
+    font-size: 18px;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease-in-out;
+}
+
+.contact-button:hover {
+    background-color: #001f4d;
+}
+
+/* Responsive Styling */
+@media (max-width: 768px) {
+    .contact-container {
+        width: 90%;
+    }
+}
