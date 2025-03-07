@@ -24,26 +24,55 @@
         <h1>Contact Me</h1>
         <p>If you have any questions, feel free to reach out using the form below.</p>
 
-        <form class="contact-form" action="https://fastapi-contact-form.onrender.com/send-message/" method="POST">
-    <label for="name">Name:</label>
-    <input type="text" id="name" name="name" required>
+        <form id="contact-form" class="contact-form">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
 
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
 
-    <label for="message">Message:</label>
-    <textarea id="message" name="message" rows="5" required></textarea>
+            <label for="message">Message:</label>
+            <textarea id="message" name="message" rows="5" required></textarea>
 
-    <button type="submit" class="contact-button">Send Message</button>
-</form>
+            <button type="submit" class="contact-button">Send Message</button>
+        </form>
 
-        
+        <!-- Success/Error Message -->
+        <p id="form-message" style="display: none; font-weight: bold;"></p>
     </section>
 </div>
 
 <footer>
     <p>&copy; 2025 Dr. K.N. Chaturvedi. All rights reserved.</p>
 </footer>
+
+<script>
+document.getElementById("contact-form").addEventListener("submit", async function(event) {
+    event.preventDefault();  // Prevent default form submission
+
+    let form = event.target;
+    let formData = new FormData(form);
+
+    let response = await fetch("https://fastapi-contact-form.onrender.com/send-message/", {
+        method: "POST",
+        body: formData
+    });
+
+    let result = await response.json();
+    let messageElement = document.getElementById("form-message");
+
+    if (result.status === "success") {
+        messageElement.style.color = "green";
+        messageElement.textContent = "✅ Message sent successfully!";
+    } else {
+        messageElement.style.color = "red";
+        messageElement.textContent = "❌ Failed to send message. Please try again.";
+    }
+
+    messageElement.style.display = "block";
+    form.reset();  // Clear the form after submission
+});
+</script>
 
 </body>
 </html>
