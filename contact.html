@@ -46,31 +46,42 @@
     <p>&copy; 2025 Dr. K.N. Chaturvedi. All rights reserved.</p>
 </footer>
 
+<!-- JavaScript should be placed at the end of body -->
 <script>
-document.getElementById("contact-form").addEventListener("submit", async function(event) {
-    event.preventDefault();  // Prevent default form submission
+document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("contact-form").addEventListener("submit", async function(event) {
+        event.preventDefault();  // Stop default form submission
 
-    let form = event.target;
-    let formData = new FormData(form);
+        let form = event.target;
+        let formData = new FormData(form);
 
-    let response = await fetch("https://fastapi-contact-form.onrender.com/send-message/", {
-        method: "POST",
-        body: formData
+        try {
+            let response = await fetch("https://fastapi-contact-form.onrender.com/send-message/", {
+                method: "POST",
+                body: formData
+            });
+
+            let result = await response.json();
+            let messageElement = document.getElementById("form-message");
+
+            if (result.status === "success") {
+                messageElement.style.color = "green";
+                messageElement.textContent = "✅ Message sent successfully!";
+            } else {
+                messageElement.style.color = "red";
+                messageElement.textContent = "❌ Failed to send message. Please try again.";
+            }
+
+            messageElement.style.display = "block";
+            form.reset();  // Clear form after successful submission
+        } catch (error) {
+            console.error("Error:", error);
+            let messageElement = document.getElementById("form-message");
+            messageElement.style.color = "red";
+            messageElement.textContent = "❌ Error sending message. Please try again.";
+            messageElement.style.display = "block";
+        }
     });
-
-    let result = await response.json();
-    let messageElement = document.getElementById("form-message");
-
-    if (result.status === "success") {
-        messageElement.style.color = "green";
-        messageElement.textContent = "✅ Message sent successfully!";
-    } else {
-        messageElement.style.color = "red";
-        messageElement.textContent = "❌ Failed to send message. Please try again.";
-    }
-
-    messageElement.style.display = "block";
-    form.reset();  // Clear the form after submission
 });
 </script>
 
