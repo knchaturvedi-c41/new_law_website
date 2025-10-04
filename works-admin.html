@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Works Admin — Dr. K.N. Chaturvedi</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .admin-note { font-size: 14px; color: #555; }
+    .auth-card, .editor-card { background: #fff; border-radius: 8px; padding: 16px; margin: 12px 0; box-shadow: 2px 2px 10px rgba(0,0,0,0.08); }
+    label { display:block; margin: 8px 0 6px; }
+    input[type="text"], input[type="email"], input[type="password"], textarea, select {
+      width: 100%; max-width: 680px; padding: 10px; border-radius: 6px; border: 1px solid #bbb;
+    }
+    textarea { min-height: 160px; }
+    .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+    .btn { background:#003366; color:#fff; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:bold; }
+    .btn.secondary { background:#777; }
+    .small { font-size: 13px; color:#555; }
+    .post-list-item { background:#f8f8f8; border-radius:8px; padding:10px 12px; margin:6px 0; display:flex; justify-content:space-between; align-items:center; }
+    .post-list-item .title { font-weight:bold; }
+    .post-list-item .meta { font-size: 13px; color:#666; }
+    .danger { background: #B00020; }
+  </style>
+  <!-- Firebase SDKs -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script defer src="blog.js"></script>
+</head>
+<body>
+<header>
+  <div class="nav-container">
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="legal-knowledge.html">Legal Knowledge</a></li>
+      <li><a href="works.html">Works of Dr. K.N. Chaturvedi</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+  </div>
+</header>
+
+<div class="page-content">
+  <section class="content-container">
+    <h1>Admin: Works</h1>
+    <p class="admin-note">Sign in with email &amp; password to create, edit, and delete posts. Only authenticated users can write.</p>
+  </section>
+
+  <section class="content-container auth-card">
+    <h2>Authentication</h2>
+    <div id="auth-when-signed-out">
+      <label for="auth-email">Email</label>
+      <input id="auth-email" type="email" placeholder="you@example.com" />
+      <label for="auth-password">Password</label>
+      <input id="auth-password" type="password" placeholder="Your password" />
+      <div class="row">
+        <button class="btn" id="btn-signin">Sign In</button>
+        <button class="btn secondary" id="btn-signup">Create Account</button>
+      </div>
+      <p class="small">Tip: You can disable self‑signup later in Firebase Authentication settings and keep only approved admin users.</p>
+    </div>
+    <div id="auth-when-signed-in" style="display:none;">
+      <p>Signed in as <strong id="me-email"></strong></p>
+      <button class="btn" id="btn-signout">Sign Out</button>
+    </div>
+  </section>
+
+  <section class="content-container editor-card" id="editor" style="display:none;">
+    <h2>Write a Post</h2>
+    <label for="post-title">Title</label>
+    <input id="post-title" type="text" placeholder="Post title" />
+
+    <label for="post-category">Category</label>
+    <select id="post-category">
+      <option>Legislative Drafting</option>
+      <option>Statutory Interpretation</option>
+    </select>
+
+    <label for="post-tags">Tags (comma-separated)</label>
+    <input id="post-tags" type="text" placeholder="e.g., constitution, tax, governance" />
+
+    <label for="post-content">Content (supports basic HTML)</label>
+    <textarea id="post-content" placeholder="Write here..."></textarea>
+
+    <label for="post-attachment">Attachment (optional: PDF/Doc/Image)</label>
+    <input id="post-attachment" type="file" />
+
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" id="btn-publish">Publish</button>
+      <button class="btn secondary" id="btn-clear">Clear</button>
+    </div>
+    <p id="editor-message" class="small"></p>
+  </section>
+
+  <section class="content-container" id="my-posts" style="display:none;">
+    <h2>Your Recent Posts</h2>
+    <div id="my-posts-list"></div>
+  </section>
+</div>
+
+<footer>
+  <p>&copy; 2025 Dr. K.N. Chaturvedi. All rights reserved.</p>
+</footer>
+</body>
+</html>

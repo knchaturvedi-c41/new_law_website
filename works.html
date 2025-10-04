@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Works of Dr. K.N. Chaturvedi</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Page-specific tweaks that complement your existing style.css */
+    .works-hero { margin-bottom: 20px; }
+    .category-tabs { display: flex; gap: 12px; margin: 10px 0 20px; flex-wrap: wrap; }
+    .category-tab { background: #003366; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .category-tab[aria-selected="true"] { background: #f1c40f; color: #003366; }
+    .post-card { background: #fff; border-radius: 8px; padding: 16px; margin: 12px 0; box-shadow: 2px 2px 10px rgba(0,0,0,0.08); }
+    .post-card h3 { margin-top: 0; }
+    .post-meta { font-size: 14px; color: #666; margin-bottom: 8px; }
+    .post-actions a { text-decoration: none; }
+    .empty { color: #666; font-style: italic; }
+    .search-wrap { margin: 10px 0 6px; }
+    .search-wrap input { width: 100%; max-width: 420px; padding: 8px 10px; border-radius: 6px; border: 1px solid #ccc; }
+  </style>
+  <!-- Firebase SDKs -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script defer src="blog.js"></script>
+</head>
+<body>
+<header>
+  <div class="nav-container">
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="legal-knowledge.html">Legal Knowledge</a></li>
+      <li><a href="works.html" class="active">Works of Dr. K.N. Chaturvedi</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+  </div>
+</header>
+
+<div class="page-content">
+  <section class="content-container works-hero">
+    <h1>Works of Dr. K.N. Chaturvedi</h1>
+    <p>Curated articles, notes, and commentaries. Browse by category below.</p>
+
+    <div class="category-tabs" role="tablist" aria-label="Works categories">
+      <button class="category-tab" role="tab" aria-selected="true" data-category="All">All</button>
+      <button class="category-tab" role="tab" aria-selected="false" data-category="Legislative Drafting">Legislative Drafting</button>
+      <button class="category-tab" role="tab" aria-selected="false" data-category="Statutory Interpretation">Statutory Interpretation</button>
+    </div>
+
+    <div class="search-wrap">
+      <input id="works-search" type="search" placeholder="Search by title or keywords…" />
+    </div>
+  </section>
+
+  <section class="content-container" id="posts-container">
+    <h2 id="current-category">All</h2>
+    <div id="posts-list" aria-live="polite"></div>
+    <p class="empty" id="empty-state" style="display:none;">No posts yet in this category.</p>
+  </section>
+
+  <section class="content-container">
+    <p><strong>Admin?</strong> <a href="works-admin.html">Add or edit posts here.</a></p>
+  </section>
+</div>
+
+<footer>
+  <p>&copy; 2025 Dr. K.N. Chaturvedi. All rights reserved.</p>
+</footer>
+</body>
+</html>
