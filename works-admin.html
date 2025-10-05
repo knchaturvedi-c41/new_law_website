@@ -31,11 +31,11 @@
     }
     #post-tags, #post-title, #post-category { max-width: 900px; }
   </style>
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDKs (compat) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <!-- Removed: storage-compat.js because attachments are gone -->
   <script defer src="blog.js"></script>
 </head>
 <body>
@@ -112,28 +112,11 @@
     </div>
     <div id="rte-editor" contenteditable="true" role="textbox" aria-multiline="true" placeholder="Write here…"></div>
 
-    <label for="post-attachment" style="margin-top:10px;">Attachment (optional: PDF/Doc/Image)</label>
-    <input id="post-attachment" type="file" />
-
-    <!-- Upload progress UI -->
-<progress id="upload-progress" max="100" value="0"
-  style="display:none; width:280px; height:10px; margin-top:6px;"></progress>
-<span id="upload-percent" class="small" style="display:none; margin-left:8px;">0%</span>
-
-
-    <!-- NEW: show current attachment with remove option -->
-    <div id="current-attachment" class="small" style="display:none; margin-top:6px;">
-      Current attachment:
-      <a id="current-attachment-link" href="#" target="_blank" rel="noopener">Open</a>
-      <button class="btn secondary" id="btn-remove-attachment" type="button" style="margin-left:8px;">Remove attachment</button>
-      <span id="attachment-removed-note" style="display:none; color:#B00020; margin-left:8px;">(will be removed on Publish)</span>
-    </div>
+    <!-- Removed: all attachment UI -->
 
     <div class="row" style="margin-top:10px;">
       <button class="btn" id="btn-publish">Publish</button>
       <button class="btn secondary" id="btn-clear">Clear</button>
-      <!-- NEW: clear only the selected file (does not clear your written content) -->
-      <button class="btn secondary" id="btn-clear-file" type="button">Clear selected file</button>
     </div>
     <p id="editor-message" class="small"></p>
   </section>
