@@ -12,7 +12,7 @@ const firebaseConfig = {
 };
 
 // ===== Set your admin email (must match your Firestore/Storage rules) =====
-const ADMIN_EMAIL = "YOUR_EMAIL_HERE";
+const ADMIN_EMAIL = "chaturvedi.kn@gmail.com";
 
 // Initialize
 firebase.initializeApp(firebaseConfig);
