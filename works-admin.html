@@ -9,10 +9,9 @@
     .admin-note { font-size: 14px; color: #555; }
     .auth-card, .editor-card { background: #fff; border-radius: 8px; padding: 16px; margin: 12px 0; box-shadow: 2px 2px 10px rgba(0,0,0,0.08); }
     label { display:block; margin: 8px 0 6px; }
-    input[type="text"], input[type="email"], input[type="password"], textarea, select {
+    input[type="text"], input[type="email"], input[type="password"], select {
       width: 100%; max-width: 680px; padding: 10px; border-radius: 6px; border: 1px solid #bbb;
     }
-    textarea { min-height: 160px; }
     .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
     .btn { background:#003366; color:#fff; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:bold; }
     .btn.secondary { background:#777; }
@@ -21,6 +20,16 @@
     .post-list-item .title { font-weight:bold; }
     .post-list-item .meta { font-size: 13px; color:#666; }
     .danger { background: #B00020; }
+
+    /* Rich text editor */
+    .toolbar { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px; }
+    .tool-btn { padding: 6px 10px; border:1px solid #ddd; border-radius:6px; background:#f7f7f7; cursor:pointer; }
+    .tool-sep { width:12px; }
+    #rte-editor {
+      border:1px solid #bbb; border-radius:8px; padding:12px; min-height:220px; background:#fff;
+      max-width: 900px;
+    }
+    #post-tags, #post-title, #post-category { max-width: 900px; }
   </style>
   <!-- Firebase SDKs -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -58,7 +67,7 @@
       <div class="row">
         <button class="btn" id="btn-signin">Sign In</button>
       </div>
-      <p class="small">Tip: You can disable self‑signup later in Firebase Authentication settings and keep only approved admin users.</p>
+      <p class="small">Tip: You can disable self-signup later in Firebase Authentication settings and keep only approved admin users.</p>
     </div>
     <div id="auth-when-signed-in" style="display:none;">
       <p>Signed in as <strong id="me-email"></strong></p>
@@ -80,10 +89,26 @@
     <label for="post-tags">Tags (comma-separated)</label>
     <input id="post-tags" type="text" placeholder="e.g., constitution, tax, governance" />
 
-    <label for="post-content">Content (supports basic HTML)</label>
-    <textarea id="post-content" placeholder="Write here..."></textarea>
+    <label>Content</label>
+    <div class="toolbar" aria-label="Formatting toolbar">
+      <button class="tool-btn" data-cmd="bold"><b>B</b></button>
+      <button class="tool-btn" data-cmd="italic"><i>I</i></button>
+      <button class="tool-btn" data-cmd="underline"><u>U</u></button>
+      <span class="tool-sep"></span>
+      <button class="tool-btn" data-cmd="formatBlock" data-value="H2">H2</button>
+      <button class="tool-btn" data-cmd="formatBlock" data-value="H3">H3</button>
+      <button class="tool-btn" data-cmd="formatBlock" data-value="P">P</button>
+      <span class="tool-sep"></span>
+      <button class="tool-btn" data-cmd="insertUnorderedList">• List</button>
+      <button class="tool-btn" data-cmd="insertOrderedList">1. List</button>
+      <span class="tool-sep"></span>
+      <button class="tool-btn" id="link-btn">Link</button>
+      <button class="tool-btn" data-cmd="formatBlock" data-value="BLOCKQUOTE">Quote</button>
+      <button class="tool-btn" data-cmd="removeFormat">Clear</button>
+    </div>
+    <div id="rte-editor" contenteditable="true" role="textbox" aria-multiline="true" placeholder="Write here…"></div>
 
-    <label for="post-attachment">Attachment (optional: PDF/Doc/Image)</label>
+    <label for="post-attachment" style="margin-top:10px;">Attachment (optional: PDF/Doc/Image)</label>
     <input id="post-attachment" type="file" />
 
     <div class="row" style="margin-top:10px;">
