@@ -1,7 +1,6 @@
 // ======================
 // Firebase configuration
 // ======================
-// Project config provided by you
 const firebaseConfig = {
   apiKey: "AIzaSyCUYKPeoDdG_28nYL5jLhfkR2qrOVIYZ9o",
   authDomain: "web-app-a144d.firebaseapp.com",
@@ -136,7 +135,7 @@ function sanitizeHtml(html) {
   const btnPublish= document.getElementById('btn-publish');
   const btnClear  = document.getElementById('btn-clear');
 
-  // ---- Toolbar logic (execCommand for simplicity) ----
+  // ---- Toolbar logic ----
   function applyCmd(cmd, val=null) {
     document.execCommand(cmd, false, val);
     rteEl.focus();
@@ -159,7 +158,6 @@ function sanitizeHtml(html) {
       if (url) applyCmd('createLink', url);
     });
   }
-  // Optional: basic paste cleanup (strip scripts via sanitize on publish)
 
   if (btnIn) btnIn.addEventListener('click', async () => {
     try {
