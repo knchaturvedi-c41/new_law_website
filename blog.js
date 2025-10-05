@@ -9,12 +9,13 @@
 
 // ---- REPLACE THIS BLOCK WITH YOUR OWN FIREBASE CONFIG ----
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyCUYKPeoDdG_28nYL5jLhfkR2qrOVIYZ9o",
+  authDomain: "web-app-a144d.firebaseapp.com",
+  projectId: "web-app-a144d",
+  storageBucket: "web-app-a144d.firebasestorage.app",
+  messagingSenderId: "380747882951",
+  appId: "1:380747882951:web:3a54e0bac13b9c95ee39e2",
+  measurementId: "G-D4FLGD3YLH"
 };
 // ----------------------------------------------------------
 
