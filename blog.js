@@ -11,9 +11,10 @@ const firebaseConfig = {
   measurementId: "G-D4FLGD3YLH"
 };
 
-// (Optional) Show admin controls on works.html only after login
-const ADMIN_EMAIL = "YOUR_EMAIL_HERE"; // must match your Firestore/Storage rules
+// ===== Set your admin email (must match your Firestore/Storage rules) =====
+const ADMIN_EMAIL = "YOUR_EMAIL_HERE";
 
+// Initialize
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -31,14 +32,14 @@ function sanitizeHtml(html) {
   return html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
 }
 
-// Track auth/admin status (used by both pages)
+// Track auth/admin status shared by both pages
 let currentUser = null;
 let isAdmin = false;
 auth.onAuthStateChanged(user => {
   currentUser = user || null;
   isAdmin = !!(user && user.email && ADMIN_EMAIL && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-  if (typeof window.__renderWorksPage === 'function') window.__renderWorksPage();
-  if (typeof window.__renderAdminStrip === 'function') window.__renderAdminStrip();
+  if (typeof window.__renderWorksPage === 'function') window.__renderWorksPage();   // re-render posts (shows/hides admin ctrls)
+  if (typeof window.__renderAdminStrip === 'function') window.__renderAdminStrip(); // update small sign-in strip on works.html
 });
 
 // ======================
@@ -54,7 +55,7 @@ auth.onAuthStateChanged(user => {
   const searchInput = document.getElementById('works-search');
   const tabs = document.querySelectorAll('.category-tab');
 
-  // Optional admin strip
+  // Optional: tiny admin strip
   let adminStrip = document.getElementById('admin-strip');
   if (!adminStrip) {
     adminStrip = document.createElement('div');
@@ -99,6 +100,7 @@ auth.onAuthStateChanged(user => {
     return currentCategory === 'All' || post.category === currentCategory;
   }
 
+  // allow auth listener to trigger a redraw
   window.__renderWorksPage = render;
 
   function render() {
@@ -115,6 +117,8 @@ auth.onAuthStateChanged(user => {
     subset.forEach(p => {
       const card = document.createElement('article');
       card.className = 'post-card';
+
+      // ⚠️ Buttons only when logged in as ADMIN
       const adminCtrls = (isAdmin)
         ? `
           <div class="post-actions" style="margin-top:8px;">
@@ -123,6 +127,7 @@ auth.onAuthStateChanged(user => {
           </div>
         `
         : '';
+
       card.innerHTML = `
         <h3>${p.title}</h3>
         <div class="post-meta">
@@ -136,11 +141,13 @@ auth.onAuthStateChanged(user => {
     });
   }
 
+  // live updates
   POSTS.orderBy('createdAt', 'desc').onSnapshot(snap => {
     allPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     render();
   });
 
+  // admin actions on public page
   listEl.addEventListener('click', async (e) => {
     const delBtn = e.target.closest('[data-del]');
     const editBtn = e.target.closest('[data-edit]');
@@ -199,7 +206,7 @@ auth.onAuthStateChanged(user => {
   const btnPublish= document.getElementById('btn-publish');
   const btnClear  = document.getElementById('btn-clear');
 
-  // NEW: current attachment UI
+  // Remove-attachment UI
   const currentAttachmentBox  = document.getElementById('current-attachment');
   const currentAttachmentLink = document.getElementById('current-attachment-link');
   const btnRemoveAttachment   = document.getElementById('btn-remove-attachment');
@@ -219,7 +226,7 @@ auth.onAuthStateChanged(user => {
     };
   }
 
-  // Toolbar logic (if you have toolbar buttons in your HTML)
+  // Toolbar logic (only if toolbar exists)
   function applyCmd(cmd, val=null) {
     if (document.execCommand && rteEl?.focus) {
       document.execCommand(cmd, false, val);
@@ -245,15 +252,10 @@ auth.onAuthStateChanged(user => {
     try { await auth.signInWithEmailAndPassword(emailEl.value, passEl.value); }
     catch (e) { alert(e.message); }
   });
-
   if (btnOut) btnOut.addEventListener('click', async () => { await auth.signOut(); });
 
-  // Clear only the chosen file (doesn't touch your written content)
-  if (btnClearFile) btnClearFile.addEventListener('click', () => {
-    if (attachEl) attachEl.value = '';
-  });
+  if (btnClearFile) btnClearFile.addEventListener('click', () => { if (attachEl) attachEl.value = ''; });
 
-  // Mark current attachment for removal (deletes on Publish)
   if (btnRemoveAttachment) btnRemoveAttachment.addEventListener('click', () => {
     removeAttachmentFlag = true;
     if (removedNote) removedNote.style.display = 'inline';
@@ -268,7 +270,7 @@ auth.onAuthStateChanged(user => {
       myPostsBox.style.display = 'block';
       meEmail.textContent = user.email || '(no email)';
 
-      // Load my recent posts (index-free variant)
+      // Index-free recent posts (avoids composite index requirement)
       POSTS.orderBy('createdAt','desc').limit(100).onSnapshot(snap => {
         myPostsList.innerHTML = '';
         const mine = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.authorUid === user.uid);
@@ -297,7 +299,7 @@ auth.onAuthStateChanged(user => {
           myPostsList.appendChild(row);
         });
 
-        // Delete (also removes attachment if present)
+        // Delete (also removes attachment)
         myPostsList.querySelectorAll('[data-del]').forEach(btn => {
           btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-del');
@@ -315,7 +317,7 @@ auth.onAuthStateChanged(user => {
           });
         });
 
-        // Edit: load into editor (and show current attachment)
+        // Edit: load into editor + show current attachment
         myPostsList.querySelectorAll('[data-edit]').forEach(btn => {
           btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-edit');
@@ -329,7 +331,6 @@ auth.onAuthStateChanged(user => {
               msgEl.textContent = 'Loaded post. Edit fields and click Publish to update.';
               editor.dataset.editing = id;
 
-              // show current attachment UI
               currentAttachmentUrl = p.attachmentUrl || null;
               removeAttachmentFlag = false;
               if (currentAttachmentUrl) {
@@ -388,16 +389,93 @@ auth.onAuthStateChanged(user => {
     }
   });
 
-  async function maybeUploadAttachment(user) {
+  // ---------- Robust uploader with progress ----------
+  async function maybeUploadAttachment(user, opts = {}) {
     const file = attachEl?.files?.[0];
     if (!file) return null;
-    const ext = file.name.split('.').pop();
-    const path = `attachments/${user.uid}/${Date.now()}.${ext}`;
+
+    const MAX_MB = opts.maxMb ?? 25;
+    const ALLOWED = opts.allowed ?? [
+      'application/pdf',
+      'image/png', 'image/jpeg', 'image/webp',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    const sizeMb = file.size / (1024 * 1024);
+    if (sizeMb > MAX_MB) throw new Error(`File is ${sizeMb.toFixed(1)} MB; limit is ${MAX_MB} MB.`);
+
+    if (ALLOWED.length && !ALLOWED.includes(file.type)) {
+      console.warn('Unrecognized file type:', file.type);
+    }
+
+    // Build a safe path
+    const safeName = (file.name || 'upload').replace(/[^\w.\-]+/g, '_').slice(0, 100);
+    const ext = safeName.includes('.') ? '' : (file.type === 'application/pdf' ? '.pdf' : '');
+    const path = `attachments/${user.uid}/${Date.now()}_${safeName}${ext}`;
     const ref = storage.ref().child(path);
-    await ref.put(file);
-    return await ref.getDownloadURL();
+    const metadata = { contentType: file.type || 'application/octet-stream' };
+
+    // Progress element (admin page only)
+    let bar = document.getElementById('upload-progress');
+    if (!bar) {
+      bar = document.createElement('progress');
+      bar.id = 'upload-progress';
+      bar.max = 100;
+      bar.value = 0;
+      bar.style.marginLeft = '8px';
+      // next to message line if present; else append near attachment input
+      const anchor = document.getElementById('editor-message') || document.getElementById('post-attachment');
+      anchor?.insertAdjacentElement('afterend', bar);
+    }
+    if (document.getElementById('editor-message')) {
+      document.getElementById('editor-message').textContent = `Uploading ${safeName}… 0%`;
+    }
+
+    const uploadTask = ref.put(file, metadata);
+    const TIMEOUT_MS = opts.timeoutMs ?? 90_000;
+    let timeoutId = setTimeout(() => {
+      try { uploadTask.cancel(); } catch {}
+    }, TIMEOUT_MS);
+
+    const url = await new Promise((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        (snap) => {
+          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          if (bar) bar.value = pct;
+          const message = document.getElementById('editor-message');
+          if (message) message.textContent = `Uploading ${safeName}… ${pct}%`;
+        },
+        (err) => {
+          clearTimeout(timeoutId);
+          if (bar) bar.remove();
+          let nice = err?.message || String(err);
+          if (err?.code === 'storage/unauthorized') nice = 'Upload blocked by Storage Rules. Check rules and login.';
+          else if (err?.code === 'storage/canceled') nice = 'Upload canceled (timed out). Try again or use a smaller file.';
+          else if (err?.code === 'storage/retry-limit-exceeded') nice = 'Network unstable—upload kept failing.';
+          reject(new Error(nice));
+        },
+        async () => {
+          clearTimeout(timeoutId);
+          try {
+            const dl = await uploadTask.snapshot.ref.getDownloadURL();
+            if (bar) bar.remove();
+            const message = document.getElementById('editor-message');
+            if (message) message.textContent = 'Upload complete.';
+            resolve(dl);
+          } catch (e) {
+            if (bar) bar.remove();
+            reject(e);
+          }
+        }
+      );
+    });
+
+    return url;
   }
 
+  // ---------- Publish ----------
   async function publish() {
     const user = auth.currentUser;
     if (!user) return alert('Please sign in first.');
@@ -413,30 +491,25 @@ auth.onAuthStateChanged(user => {
       return alert('Content is empty.');
     }
 
-    msgEl.textContent = 'Uploading…';
+    if (msgEl) msgEl.textContent = 'Uploading…';
     let newAttachmentUrl = null;
 
-    // If a new file is selected, upload it
     try {
       newAttachmentUrl = await maybeUploadAttachment(user);
     } catch (e) {
       console.warn('Attachment upload failed:', e);
+      alert(e.message);
     }
 
-    // Decide final attachment URL based on user actions
-    let finalAttachmentUrl = currentAttachmentUrl; // default: keep existing
+    let finalAttachmentUrl = currentAttachmentUrl; // keep existing by default
     if (removeAttachmentFlag) {
-      // delete existing file (if any) and clear
       if (currentAttachmentUrl) {
         try { await storage.refFromURL(currentAttachmentUrl).delete(); }
         catch (e) { console.warn('Attachment delete skipped:', e?.message || e); }
       }
       finalAttachmentUrl = null;
     }
-    // If a new file was uploaded, it replaces whatever was there
-    if (newAttachmentUrl) {
-      finalAttachmentUrl = newAttachmentUrl;
-    }
+    if (newAttachmentUrl) finalAttachmentUrl = newAttachmentUrl;
 
     const docIdEditing = editor.dataset.editing;
     const payload = {
@@ -450,10 +523,9 @@ auth.onAuthStateChanged(user => {
     try {
       if (docIdEditing) {
         await POSTS.doc(docIdEditing).update(payload);
-        msgEl.textContent = 'Updated!';
+        if (msgEl) msgEl.textContent = 'Updated!';
         editor.dataset.editing = '';
 
-        // Reset attachment UI state
         currentAttachmentUrl = finalAttachmentUrl;
         removeAttachmentFlag = false;
         if (currentAttachmentUrl) {
@@ -468,17 +540,15 @@ auth.onAuthStateChanged(user => {
 
       } else {
         await POSTS.add({ ...payload, createdAt: now });
-        msgEl.textContent = 'Published!';
-        attachEl.value = '';
+        if (msgEl) msgEl.textContent = 'Published!';
+        attachEl && (attachEl.value = '');
         currentAttachmentUrl = null;
         removeAttachmentFlag = false;
-        currentAttachmentBox.style.display = 'none';
+        currentAttachmentBox && (currentAttachmentBox.style.display = 'none');
       }
 
-      // ✅ Redirect to public page after success
-      setTimeout(() => {
-        window.location.href = 'works.html';
-      }, 800); // short pause to show "Published!/Updated!" message
+      // Redirect to public page after success
+      setTimeout(() => { window.location.href = 'works.html'; }, 800);
 
     } catch (e) {
       console.error(e);
@@ -491,11 +561,11 @@ auth.onAuthStateChanged(user => {
     titleEl.value = '';
     tagsEl.value = '';
     rteEl.innerHTML = '';
-    attachEl.value = '';
+    attachEl && (attachEl.value = '');
     editor.dataset.editing = '';
-    msgEl.textContent = 'Cleared.';
+    msgEl && (msgEl.textContent = 'Cleared.');
     currentAttachmentUrl = null;
     removeAttachmentFlag = false;
-    if (currentAttachmentBox) currentAttachmentBox.style.display = 'none';
+    currentAttachmentBox && (currentAttachmentBox.style.display = 'none');
   });
 })();
