@@ -115,6 +115,12 @@
     <label for="post-attachment" style="margin-top:10px;">Attachment (optional: PDF/Doc/Image)</label>
     <input id="post-attachment" type="file" />
 
+    <!-- Upload progress UI -->
+<progress id="upload-progress" max="100" value="0"
+  style="display:none; width:280px; height:10px; margin-top:6px;"></progress>
+<span id="upload-percent" class="small" style="display:none; margin-left:8px;">0%</span>
+
+
     <!-- NEW: show current attachment with remove option -->
     <div id="current-attachment" class="small" style="display:none; margin-top:6px;">
       Current attachment:
