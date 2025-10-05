@@ -11,39 +11,33 @@ const firebaseConfig = {
   measurementId: "G-D4FLGD3YLH"
 };
 
-// ===== Set your admin email (must match your Firestore/Storage rules) =====
-const ADMIN_EMAIL = "chaturvedi.kn@gmail.com"; // e.g., "you@example.com"
+// (Optional) Show admin controls on works.html only after login
+const ADMIN_EMAIL = "YOUR_EMAIL_HERE"; // must match your Firestore/Storage rules
 
-// Initialize
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// Collections
 const POSTS = db.collection('works_posts');
 
 // Utils
 function formatDate(ts) {
-  try {
-    const d = ts?.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleString();
-  } catch { return ''; }
+  try { const d = ts?.toDate ? ts.toDate() : new Date(ts); return d.toLocaleString(); }
+  catch { return ''; }
 }
 function sanitizeHtml(html) {
   if (!html) return "";
   return html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
 }
 
-// Track auth/admin status
+// Track auth/admin status (used by both pages)
 let currentUser = null;
 let isAdmin = false;
 auth.onAuthStateChanged(user => {
   currentUser = user || null;
-  isAdmin = !!(user && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-  // Re-render the works page (so admin buttons appear/disappear)
+  isAdmin = !!(user && user.email && ADMIN_EMAIL && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
   if (typeof window.__renderWorksPage === 'function') window.__renderWorksPage();
-  // Update the small admin strip if present
   if (typeof window.__renderAdminStrip === 'function') window.__renderAdminStrip();
 });
 
@@ -60,7 +54,7 @@ auth.onAuthStateChanged(user => {
   const searchInput = document.getElementById('works-search');
   const tabs = document.querySelectorAll('.category-tab');
 
-  // Optional: add a tiny admin strip at the top of posts-container
+  // Optional admin strip
   let adminStrip = document.getElementById('admin-strip');
   if (!adminStrip) {
     adminStrip = document.createElement('div');
@@ -93,9 +87,7 @@ auth.onAuthStateChanged(user => {
     });
   });
 
-  if (searchInput) {
-    searchInput.addEventListener('input', render);
-  }
+  if (searchInput) searchInput.addEventListener('input', render);
 
   function matchesSearch(post) {
     const q = (searchInput?.value || '').trim().toLowerCase();
@@ -103,12 +95,10 @@ auth.onAuthStateChanged(user => {
     const blob = [post.title, post.category, post.content, (post.tags||[]).join(' ')].join(' ').toLowerCase();
     return blob.includes(q);
   }
-
   function matchesCategory(post) {
     return currentCategory === 'All' || post.category === currentCategory;
   }
 
-  // Make render callable from auth listener
   window.__renderWorksPage = render;
 
   function render() {
@@ -120,13 +110,11 @@ auth.onAuthStateChanged(user => {
       return;
     }
     if (emptyEl) emptyEl.style.display = 'none';
-
     subset.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
     subset.forEach(p => {
       const card = document.createElement('article');
       card.className = 'post-card';
-
-      // Admin-only controls — ONLY inserted when logged in as admin
       const adminCtrls = (isAdmin)
         ? `
           <div class="post-actions" style="margin-top:8px;">
@@ -135,7 +123,6 @@ auth.onAuthStateChanged(user => {
           </div>
         `
         : '';
-
       card.innerHTML = `
         <h3>${p.title}</h3>
         <div class="post-meta">
@@ -149,13 +136,11 @@ auth.onAuthStateChanged(user => {
     });
   }
 
-  // Live updates
   POSTS.orderBy('createdAt', 'desc').onSnapshot(snap => {
     allPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     render();
   });
 
-  // Event delegation for Edit/Delete on the public page (only works when admin is logged in)
   listEl.addEventListener('click', async (e) => {
     const delBtn = e.target.closest('[data-del]');
     const editBtn = e.target.closest('[data-edit]');
@@ -206,15 +191,26 @@ auth.onAuthStateChanged(user => {
   const titleEl   = document.getElementById('post-title');
   const catEl     = document.getElementById('post-category');
   const tagsEl    = document.getElementById('post-tags');
-  let   rteEl     = document.getElementById('rte-editor'); // rich text div
-  const textFallback = document.getElementById('post-content'); // fallback textarea if present
+  let   rteEl     = document.getElementById('rte-editor');
+  const textFallback = document.getElementById('post-content'); // if you still have a textarea
   const attachEl  = document.getElementById('post-attachment');
   const msgEl     = document.getElementById('editor-message');
 
   const btnPublish= document.getElementById('btn-publish');
   const btnClear  = document.getElementById('btn-clear');
 
-  // If rich editor missing, fall back to textarea
+  // NEW: current attachment UI
+  const currentAttachmentBox  = document.getElementById('current-attachment');
+  const currentAttachmentLink = document.getElementById('current-attachment-link');
+  const btnRemoveAttachment   = document.getElementById('btn-remove-attachment');
+  const removedNote           = document.getElementById('attachment-removed-note');
+  const btnClearFile          = document.getElementById('btn-clear-file');
+
+  // Track current & removal intent
+  let currentAttachmentUrl = null;
+  let removeAttachmentFlag = false;
+
+  // Fallback to textarea if RTE not present
   if (!rteEl && textFallback) {
     rteEl = {
       get innerHTML(){ return textFallback.value; },
@@ -223,7 +219,7 @@ auth.onAuthStateChanged(user => {
     };
   }
 
-  // Toolbar logic (only if toolbar exists)
+  // Toolbar logic (if you have toolbar buttons in your HTML)
   function applyCmd(cmd, val=null) {
     if (document.execCommand && rteEl?.focus) {
       document.execCommand(cmd, false, val);
@@ -246,13 +242,22 @@ auth.onAuthStateChanged(user => {
   }
 
   if (btnIn) btnIn.addEventListener('click', async () => {
-    try {
-      await auth.signInWithEmailAndPassword(emailEl.value, passEl.value);
-    } catch (e) { alert(e.message); }
+    try { await auth.signInWithEmailAndPassword(emailEl.value, passEl.value); }
+    catch (e) { alert(e.message); }
   });
 
-  if (btnOut) btnOut.addEventListener('click', async () => {
-    await auth.signOut();
+  if (btnOut) btnOut.addEventListener('click', async () => { await auth.signOut(); });
+
+  // Clear only the chosen file (doesn't touch your written content)
+  if (btnClearFile) btnClearFile.addEventListener('click', () => {
+    if (attachEl) attachEl.value = '';
+  });
+
+  // Mark current attachment for removal (deletes on Publish)
+  if (btnRemoveAttachment) btnRemoveAttachment.addEventListener('click', () => {
+    removeAttachmentFlag = true;
+    if (removedNote) removedNote.style.display = 'inline';
+    if (currentAttachmentLink) currentAttachmentLink.style.textDecoration = 'line-through';
   });
 
   auth.onAuthStateChanged(user => {
@@ -263,11 +268,20 @@ auth.onAuthStateChanged(user => {
       myPostsBox.style.display = 'block';
       meEmail.textContent = user.email || '(no email)';
 
-      // Load my recent posts
-      POSTS.where('authorUid','==',user.uid).orderBy('createdAt','desc').limit(25).onSnapshot(snap => {
+      // Load my recent posts (index-free variant)
+      POSTS.orderBy('createdAt','desc').limit(100).onSnapshot(snap => {
         myPostsList.innerHTML = '';
-        snap.forEach(doc => {
-          const p = { id: doc.id, ...doc.data() };
+        const mine = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.authorUid === user.uid);
+
+        if (mine.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'small';
+          empty.textContent = 'No posts yet.';
+          myPostsList.appendChild(empty);
+          return;
+        }
+
+        mine.forEach(p => {
           const row = document.createElement('div');
           row.className = 'post-list-item';
           row.innerHTML = `
@@ -283,7 +297,7 @@ auth.onAuthStateChanged(user => {
           myPostsList.appendChild(row);
         });
 
-        // Delete from admin list (also removes attachment)
+        // Delete (also removes attachment if present)
         myPostsList.querySelectorAll('[data-del]').forEach(btn => {
           btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-del');
@@ -297,13 +311,11 @@ auth.onAuthStateChanged(user => {
                 catch (e) { console.warn('Attachment delete skipped:', e?.message || e); }
               }
               await docRef.delete();
-            } catch (e) {
-              console.error(e); alert(e.message);
-            }
+            } catch (e) { console.error(e); alert(e.message); }
           });
         });
 
-        // Edit: load into editor
+        // Edit: load into editor (and show current attachment)
         myPostsList.querySelectorAll('[data-edit]').forEach(btn => {
           btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-edit');
@@ -316,6 +328,20 @@ auth.onAuthStateChanged(user => {
               rteEl.innerHTML = p.content || '';
               msgEl.textContent = 'Loaded post. Edit fields and click Publish to update.';
               editor.dataset.editing = id;
+
+              // show current attachment UI
+              currentAttachmentUrl = p.attachmentUrl || null;
+              removeAttachmentFlag = false;
+              if (currentAttachmentUrl) {
+                currentAttachmentBox.style.display = 'block';
+                currentAttachmentLink.href = currentAttachmentUrl;
+                currentAttachmentLink.textContent = 'Open';
+                currentAttachmentLink.style.textDecoration = 'none';
+                removedNote.style.display = 'none';
+              } else {
+                currentAttachmentBox.style.display = 'none';
+              }
+
               window.scrollTo({ top: editor.offsetTop - 80, behavior: 'smooth' });
             }
           });
@@ -335,6 +361,19 @@ auth.onAuthStateChanged(user => {
             rteEl.innerHTML = p.content || '';
             msgEl.textContent = 'Loaded post from Works page. Edit and Publish to update.';
             editor.dataset.editing = editId;
+
+            currentAttachmentUrl = p.attachmentUrl || null;
+            removeAttachmentFlag = false;
+            if (currentAttachmentUrl) {
+              currentAttachmentBox.style.display = 'block';
+              currentAttachmentLink.href = currentAttachmentUrl;
+              currentAttachmentLink.textContent = 'Open';
+              currentAttachmentLink.style.textDecoration = 'none';
+              removedNote.style.display = 'none';
+            } else {
+              currentAttachmentBox.style.display = 'none';
+            }
+
             window.scrollTo({ top: editor.offsetTop - 80, behavior: 'smooth' });
           }
         });
@@ -375,14 +414,34 @@ auth.onAuthStateChanged(user => {
     }
 
     msgEl.textContent = 'Uploading…';
-    let attachmentUrl = null;
-    try { attachmentUrl = await maybeUploadAttachment(user); }
-    catch (e) { console.warn('Attachment upload failed:', e); }
+    let newAttachmentUrl = null;
+
+    // If a new file is selected, upload it
+    try {
+      newAttachmentUrl = await maybeUploadAttachment(user);
+    } catch (e) {
+      console.warn('Attachment upload failed:', e);
+    }
+
+    // Decide final attachment URL based on user actions
+    let finalAttachmentUrl = currentAttachmentUrl; // default: keep existing
+    if (removeAttachmentFlag) {
+      // delete existing file (if any) and clear
+      if (currentAttachmentUrl) {
+        try { await storage.refFromURL(currentAttachmentUrl).delete(); }
+        catch (e) { console.warn('Attachment delete skipped:', e?.message || e); }
+      }
+      finalAttachmentUrl = null;
+    }
+    // If a new file was uploaded, it replaces whatever was there
+    if (newAttachmentUrl) {
+      finalAttachmentUrl = newAttachmentUrl;
+    }
 
     const docIdEditing = editor.dataset.editing;
     const payload = {
       title, category, tags, content,
-      attachmentUrl: attachmentUrl || null,
+      attachmentUrl: finalAttachmentUrl || null,
       authorUid: user.uid,
       authorEmail: user.email || null,
       updatedAt: now,
@@ -393,9 +452,31 @@ auth.onAuthStateChanged(user => {
         await POSTS.doc(docIdEditing).update(payload);
         msgEl.textContent = 'Updated!';
         editor.dataset.editing = '';
+
+        // Reset attachment UI state
+        currentAttachmentUrl = finalAttachmentUrl;
+        removeAttachmentFlag = false;
+        if (currentAttachmentUrl) {
+          currentAttachmentBox.style.display = 'block';
+          currentAttachmentLink.href = currentAttachmentUrl;
+          currentAttachmentLink.textContent = 'Open';
+          currentAttachmentLink.style.textDecoration = 'none';
+          removedNote.style.display = 'none';
+        } else {
+          currentAttachmentBox.style.display = 'none';
+        }
+
       } else {
         await POSTS.add({ ...payload, createdAt: now });
         msgEl.textContent = 'Published!';
+        // Clear only what makes sense; keep the text if you prefer
+        // titleEl.value = '';
+        // tagsEl.value = '';
+        // rteEl.innerHTML = '';
+        attachEl.value = '';
+        currentAttachmentUrl = null;
+        removeAttachmentFlag = false;
+        currentAttachmentBox.style.display = 'none';
       }
     } catch (e) {
       console.error(e);
@@ -411,5 +492,8 @@ auth.onAuthStateChanged(user => {
     attachEl.value = '';
     editor.dataset.editing = '';
     msgEl.textContent = 'Cleared.';
+    currentAttachmentUrl = null;
+    removeAttachmentFlag = false;
+    if (currentAttachmentBox) currentAttachmentBox.style.display = 'none';
   });
 })();
