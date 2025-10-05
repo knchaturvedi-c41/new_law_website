@@ -469,15 +469,17 @@ auth.onAuthStateChanged(user => {
       } else {
         await POSTS.add({ ...payload, createdAt: now });
         msgEl.textContent = 'Published!';
-        // Clear only what makes sense; keep the text if you prefer
-        // titleEl.value = '';
-        // tagsEl.value = '';
-        // rteEl.innerHTML = '';
         attachEl.value = '';
         currentAttachmentUrl = null;
         removeAttachmentFlag = false;
         currentAttachmentBox.style.display = 'none';
       }
+
+      // ✅ Redirect to public page after success
+      setTimeout(() => {
+        window.location.href = 'works.html';
+      }, 800); // short pause to show "Published!/Updated!" message
+
     } catch (e) {
       console.error(e);
       alert(e.message);
