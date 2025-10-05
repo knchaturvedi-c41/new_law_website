@@ -115,9 +115,19 @@
     <label for="post-attachment" style="margin-top:10px;">Attachment (optional: PDF/Doc/Image)</label>
     <input id="post-attachment" type="file" />
 
+    <!-- NEW: show current attachment with remove option -->
+    <div id="current-attachment" class="small" style="display:none; margin-top:6px;">
+      Current attachment:
+      <a id="current-attachment-link" href="#" target="_blank" rel="noopener">Open</a>
+      <button class="btn secondary" id="btn-remove-attachment" type="button" style="margin-left:8px;">Remove attachment</button>
+      <span id="attachment-removed-note" style="display:none; color:#B00020; margin-left:8px;">(will be removed on Publish)</span>
+    </div>
+
     <div class="row" style="margin-top:10px;">
       <button class="btn" id="btn-publish">Publish</button>
       <button class="btn secondary" id="btn-clear">Clear</button>
+      <!-- NEW: clear only the selected file (does not clear your written content) -->
+      <button class="btn secondary" id="btn-clear-file" type="button">Clear selected file</button>
     </div>
     <p id="editor-message" class="small"></p>
   </section>
