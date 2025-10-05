@@ -1,13 +1,7 @@
 // ======================
 // Firebase configuration
 // ======================
-// 1) Create a Firebase project at https://console.firebase.google.com
-// 2) Enable Authentication (Email/Password), Firestore, and Storage
-// 3) Replace the config object below with YOUR project's values
-// 4) (Optional) Restrict sign-up to only specific admins in Firebase Auth settings
-// 5) Set Firestore Security Rules to allow read for all and write only for authenticated users (see rules at bottom)
-
-// ---- REPLACE THIS BLOCK WITH YOUR OWN FIREBASE CONFIG ----
+// Project config provided by you
 const firebaseConfig = {
   apiKey: "AIzaSyCUYKPeoDdG_28nYL5jLhfkR2qrOVIYZ9o",
   authDomain: "web-app-a144d.firebaseapp.com",
@@ -17,7 +11,6 @@ const firebaseConfig = {
   appId: "1:380747882951:web:3a54e0bac13b9c95ee39e2",
   measurementId: "G-D4FLGD3YLH"
 };
-// ----------------------------------------------------------
 
 // Initialize
 firebase.initializeApp(firebaseConfig);
@@ -36,6 +29,12 @@ function formatDate(ts) {
   } catch {
     return '';
   }
+}
+
+// Very basic sanitizer to strip <script> tags
+function sanitizeHtml(html) {
+  if (!html) return "";
+  return html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
 }
 
 // ======================
@@ -117,7 +116,6 @@ function formatDate(ts) {
   const emailEl = document.getElementById('auth-email');
   const passEl  = document.getElementById('auth-password');
   const btnIn   = document.getElementById('btn-signin');
-  const btnUp   = document.getElementById('btn-signup');
   const btnOut  = document.getElementById('btn-signout');
 
   const whenOut = document.getElementById('auth-when-signed-out');
@@ -131,24 +129,41 @@ function formatDate(ts) {
   const titleEl   = document.getElementById('post-title');
   const catEl     = document.getElementById('post-category');
   const tagsEl    = document.getElementById('post-tags');
-  const contentEl = document.getElementById('post-content');
+  const rteEl     = document.getElementById('rte-editor');
   const attachEl  = document.getElementById('post-attachment');
   const msgEl     = document.getElementById('editor-message');
 
   const btnPublish= document.getElementById('btn-publish');
   const btnClear  = document.getElementById('btn-clear');
 
+  // ---- Toolbar logic (execCommand for simplicity) ----
+  function applyCmd(cmd, val=null) {
+    document.execCommand(cmd, false, val);
+    rteEl.focus();
+  }
+  document.querySelectorAll('.tool-btn[data-cmd]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cmd = btn.getAttribute('data-cmd');
+      const val = btn.getAttribute('data-value') || null;
+      if (cmd === 'formatBlock' && val) {
+        applyCmd(cmd, val);
+      } else {
+        applyCmd(cmd);
+      }
+    });
+  });
+  const linkBtn = document.getElementById('link-btn');
+  if (linkBtn) {
+    linkBtn.addEventListener('click', () => {
+      const url = prompt('Enter URL (include https://):');
+      if (url) applyCmd('createLink', url);
+    });
+  }
+  // Optional: basic paste cleanup (strip scripts via sanitize on publish)
+
   if (btnIn) btnIn.addEventListener('click', async () => {
     try {
       await auth.signInWithEmailAndPassword(emailEl.value, passEl.value);
-    } catch (e) {
-      alert(e.message);
-    }
-  });
-
-  if (btnUp) btnUp.addEventListener('click', async () => {
-    try {
-      await auth.createUserWithEmailAndPassword(emailEl.value, passEl.value);
     } catch (e) {
       alert(e.message);
     }
@@ -204,7 +219,7 @@ function formatDate(ts) {
               titleEl.value = p.title || '';
               catEl.value   = p.category || 'Legislative Drafting';
               tagsEl.value  = (p.tags||[]).join(', ');
-              contentEl.value = p.content || '';
+              rteEl.innerHTML = p.content || '';
               msgEl.textContent = 'Loaded post. Edit fields and click Publish to update.';
               // Store current editing id
               editor.dataset.editing = id;
@@ -240,9 +255,12 @@ function formatDate(ts) {
     const title = (titleEl.value || '').trim();
     const category = catEl.value;
     const tags = (tagsEl.value || '').split(',').map(s => s.trim()).filter(Boolean);
-    const content = contentEl.value;
+    const content = sanitizeHtml(rteEl.innerHTML);
 
     if (!title) return alert('Title is required.');
+    if (!content || content.replace(/<[^>]+>/g, '').trim().length === 0) {
+      return alert('Content is empty.');
+    }
 
     msgEl.textContent = 'Uploading…';
     let attachmentUrl = null;
@@ -273,10 +291,6 @@ function formatDate(ts) {
         await POSTS.add({ ...payload, createdAt: now });
         msgEl.textContent = 'Published!';
       }
-      // clear inputs (not attachment for convenience)
-      // titleEl.value = '';
-      // contentEl.value = '';
-      // tagsEl.value = '';
     } catch (e) {
       console.error(e);
       alert(e.message);
@@ -287,25 +301,9 @@ function formatDate(ts) {
   if (btnClear) btnClear.addEventListener('click', () => {
     titleEl.value = '';
     tagsEl.value = '';
-    contentEl.value = '';
+    rteEl.innerHTML = '';
     attachEl.value = '';
     editor.dataset.editing = '';
     msgEl.textContent = 'Cleared.';
   });
 })();
-
-// ======================
-// Firestore Security Rules (example)
-// ======================
-// In Firebase console -> Firestore -> Rules, you can use something like:
-/*
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /works_posts/{docId} {
-      allow read: if true; // public read
-      allow create, update, delete: if request.auth != null; // only signed-in users
-    }
-  }
-}
-*/
