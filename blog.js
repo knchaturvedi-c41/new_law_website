@@ -389,7 +389,7 @@ auth.onAuthStateChanged(user => {
     }
   });
 
-  // ---------- Robust uploader with progress ----------
+  // ---------- FAST uploader: compress images client-side + progress ----------
   async function maybeUploadAttachment(user, opts = {}) {
     const file = attachEl?.files?.[0];
     if (!file) return null;
@@ -404,55 +404,79 @@ auth.onAuthStateChanged(user => {
 
     const sizeMb = file.size / (1024 * 1024);
     if (sizeMb > MAX_MB) throw new Error(`File is ${sizeMb.toFixed(1)} MB; limit is ${MAX_MB} MB.`);
-
     if (ALLOWED.length && !ALLOWED.includes(file.type)) {
       console.warn('Unrecognized file type:', file.type);
     }
 
+    // If it's an image, compress first
+    let toUpload = file;
+    const isImage = /^image\/(jpeg|png|webp)$/i.test(file.type);
+    if (isImage) {
+      try {
+        toUpload = await compressImage(file, {
+          maxW: opts.maxW ?? 1600,
+          maxH: opts.maxH ?? 1600,
+          quality: opts.quality ?? 0.78,
+          forceMime: 'image/jpeg'
+        });
+        if (toUpload.size > file.size) toUpload = file; // fallback if compression didn't help
+      } catch (e) {
+        console.warn('Compression failed, using original:', e);
+        toUpload = file;
+      }
+    }
+
     // Build a safe path
     const safeName = (file.name || 'upload').replace(/[^\w.\-]+/g, '_').slice(0, 100);
-    const ext = safeName.includes('.') ? '' : (file.type === 'application/pdf' ? '.pdf' : '');
-    const path = `attachments/${user.uid}/${Date.now()}_${safeName}${ext}`;
+    const suggestedExt = isImage ? '.jpg' : (safeName.includes('.') ? '' : (file.type === 'application/pdf' ? '.pdf' : ''));
+    const path = `attachments/${user.uid}/${Date.now()}_${safeName}${suggestedExt}`;
     const ref = storage.ref().child(path);
-    const metadata = { contentType: file.type || 'application/octet-stream' };
+    const metadata = { contentType: toUpload.type || file.type || 'application/octet-stream' };
 
-    // Progress element (admin page only)
+    // Progress elements (create if missing)
     let bar = document.getElementById('upload-progress');
+    let percent = document.getElementById('upload-percent');
     if (!bar) {
       bar = document.createElement('progress');
       bar.id = 'upload-progress';
       bar.max = 100;
       bar.value = 0;
-      bar.style.marginLeft = '8px';
-      // next to message line if present; else append near attachment input
-      const anchor = document.getElementById('editor-message') || document.getElementById('post-attachment');
-      anchor?.insertAdjacentElement('afterend', bar);
+      bar.style.cssText = 'display:inline-block;width:280px;height:10px;margin-top:6px;';
+      (document.getElementById('editor-message') || document.getElementById('post-attachment'))
+        ?.insertAdjacentElement('afterend', bar);
+    } else {
+      bar.value = 0;
+      bar.style.display = 'inline-block';
     }
-    if (document.getElementById('editor-message')) {
-      document.getElementById('editor-message').textContent = `Uploading ${safeName}… 0%`;
+    if (!percent) {
+      percent = document.createElement('span');
+      percent.id = 'upload-percent';
+      percent.className = 'small';
+      percent.style.cssText = 'display:inline-block;margin-left:8px;';
+      bar.insertAdjacentElement('afterend', percent);
     }
+    percent.textContent = '0%';
+    if (msgEl) msgEl.textContent = `Uploading ${safeName}… 0%`;
 
-    const uploadTask = ref.put(file, metadata);
-    const TIMEOUT_MS = opts.timeoutMs ?? 90_000;
-    let timeoutId = setTimeout(() => {
-      try { uploadTask.cancel(); } catch {}
-    }, TIMEOUT_MS);
+    const uploadTask = ref.put(toUpload, metadata);
+    const TIMEOUT_MS = opts.timeoutMs ?? 120_000;
+    let timeoutId = setTimeout(() => { try { uploadTask.cancel(); } catch {} }, TIMEOUT_MS);
 
     const url = await new Promise((resolve, reject) => {
       uploadTask.on(
         'state_changed',
         (snap) => {
-          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-          if (bar) bar.value = pct;
-          const message = document.getElementById('editor-message');
-          if (message) message.textContent = `Uploading ${safeName}… ${pct}%`;
+          const p = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          if (bar) bar.value = p;
+          if (percent) percent.textContent = `${p}%`;
+          if (msgEl) msgEl.textContent = `Uploading ${safeName}… ${p}%`;
         },
         (err) => {
           clearTimeout(timeoutId);
-          if (bar) bar.remove();
+          if (msgEl) msgEl.textContent = 'Upload failed.';
           let nice = err?.message || String(err);
           if (err?.code === 'storage/unauthorized') nice = 'Upload blocked by Storage Rules. Check rules and login.';
-          else if (err?.code === 'storage/canceled') nice = 'Upload canceled (timed out). Try again or use a smaller file.';
+          else if (err?.code === 'storage/canceled') nice = 'Upload canceled (timed out). Try again or pick a smaller file.';
           else if (err?.code === 'storage/retry-limit-exceeded') nice = 'Network unstable—upload kept failing.';
           reject(new Error(nice));
         },
@@ -460,12 +484,11 @@ auth.onAuthStateChanged(user => {
           clearTimeout(timeoutId);
           try {
             const dl = await uploadTask.snapshot.ref.getDownloadURL();
-            if (bar) bar.remove();
-            const message = document.getElementById('editor-message');
-            if (message) message.textContent = 'Upload complete.';
+            if (bar) bar.value = 100;
+            if (percent) percent.textContent = '100%';
+            if (msgEl) msgEl.textContent = 'Upload complete.';
             resolve(dl);
           } catch (e) {
-            if (bar) bar.remove();
             reject(e);
           }
         }
@@ -473,6 +496,32 @@ auth.onAuthStateChanged(user => {
     });
 
     return url;
+  }
+
+  // Compress image helper
+  async function compressImage(file, { maxW = 1600, maxH = 1600, quality = 0.8, forceMime = 'image/jpeg' } = {}) {
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+    const scale = Math.min(1, maxW / width, maxH / height);
+    const targetW = Math.max(1, Math.round(width * scale));
+    const targetH = Math.max(1, Math.round(height * scale));
+
+    if ('OffscreenCanvas' in window) {
+      const canvas = new OffscreenCanvas(targetW, targetH);
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+      const blob = await canvas.convertToBlob({ type: forceMime, quality });
+      return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: blob.type });
+    } else {
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW; canvas.height = targetH;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+      const blob = await new Promise((res, rej) => {
+        canvas.toBlob((b) => b ? res(b) : rej(new Error('toBlob failed')), forceMime, quality);
+      });
+      return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: blob.type });
+    }
   }
 
   // ---------- Publish ----------
